@@ -2,16 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Soccerleague.Models;
 
 namespace Soccerleague.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class LeagueController : ControllerBase
+    public class LeagueController : Controller
     {
         private readonly MyDbContext _context;
 
@@ -20,83 +18,130 @@ namespace Soccerleague.Controllers
             _context = context;
         }
 
-        // GET: api/League
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<League>>> GetLeague()
+        // GET: League
+        public async Task<IActionResult> Index()
         {
-            return await _context.League.ToListAsync();
+            return View(await _context.League.ToListAsync());
         }
 
-        // GET: api/League/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<League>> GetLeague(int id)
+        // GET: League/Details/5
+        public async Task<IActionResult> Details(int? id)
         {
-            var league = await _context.League.FindAsync(id);
+            if (id == null)
+            {
+                return NotFound();
+            }
 
+            var league = await _context.League
+                .FirstOrDefaultAsync(m => m.LeagueId == id);
             if (league == null)
             {
                 return NotFound();
             }
 
-            return league;
+            return View(league);
         }
 
-        // PUT: api/League/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutLeague(int id, League league)
+        // GET: League/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: League/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("LeagueId,LeagueName,LeagueCountry,LeagueLogo")] League league)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(league);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            return View(league);
+        }
+
+        // GET: League/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var league = await _context.League.FindAsync(id);
+            if (league == null)
+            {
+                return NotFound();
+            }
+            return View(league);
+        }
+
+        // POST: League/Edit/5
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("LeagueId,LeagueName,LeagueCountry,LeagueLogo")] League league)
         {
             if (id != league.LeagueId)
             {
-                return BadRequest();
+                return NotFound();
             }
 
-            _context.Entry(league).State = EntityState.Modified;
-
-            try
+            if (ModelState.IsValid)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!LeagueExists(id))
+                try
                 {
-                    return NotFound();
+                    _context.Update(league);
+                    await _context.SaveChangesAsync();
                 }
-                else
+                catch (DbUpdateConcurrencyException)
                 {
-                    throw;
+                    if (!LeagueExists(league.LeagueId))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
+                return RedirectToAction(nameof(Index));
             }
-
-            return NoContent();
+            return View(league);
         }
 
-        // POST: api/League
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<League>> PostLeague(League league)
+        // GET: League/Delete/5
+        public async Task<IActionResult> Delete(int? id)
         {
-            _context.League.Add(league);
-            await _context.SaveChangesAsync();
+            if (id == null)
+            {
+                return NotFound();
+            }
 
-            return CreatedAtAction("GetLeague", new { id = league.LeagueId }, league);
-        }
-
-        // DELETE: api/League/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteLeague(int id)
-        {
-            var league = await _context.League.FindAsync(id);
+            var league = await _context.League
+                .FirstOrDefaultAsync(m => m.LeagueId == id);
             if (league == null)
             {
                 return NotFound();
             }
 
+            return View(league);
+        }
+
+        // POST: League/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var league = await _context.League.FindAsync(id);
             _context.League.Remove(league);
             await _context.SaveChangesAsync();
-
-            return NoContent();
+            return RedirectToAction(nameof(Index));
         }
 
         private bool LeagueExists(int id)

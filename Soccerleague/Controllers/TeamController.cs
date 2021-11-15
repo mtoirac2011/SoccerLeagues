@@ -2,16 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Soccerleague.Models;
 
 namespace Soccerleague.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class TeamController : ControllerBase
+    public class TeamController : Controller
     {
         private readonly MyDbContext _context;
 
@@ -20,83 +18,137 @@ namespace Soccerleague.Controllers
             _context = context;
         }
 
-        // GET: api/Team
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Team>>> GetTeam()
+        // GET: Team
+        public async Task<IActionResult> Index()
         {
-            return await _context.Team.ToListAsync();
+            var myDbContext = _context.Team.Include(t => t.League);
+            return View(await myDbContext.ToListAsync());
         }
 
-        // GET: api/Team/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Team>> GetTeam(int id)
+        // GET: Team/Details/5
+        public async Task<IActionResult> Details(int? id)
         {
-            var team = await _context.Team.FindAsync(id);
+            if (id == null)
+            {
+                return NotFound();
+            }
 
+            var team = await _context.Team
+                .Include(t => t.League)
+                .FirstOrDefaultAsync(m => m.TeamId == id);
             if (team == null)
             {
                 return NotFound();
             }
 
-            return team;
+            return View(team);
         }
 
-        // PUT: api/Team/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutTeam(int id, Team team)
+        // GET: Team/Create
+        public IActionResult Create()
+        {
+            ViewData["LeagueId"] = new SelectList(_context.League, "LeagueId", "LeagueCountry");
+            return View();
+        }
+
+        // POST: Team/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("TeamId,TeamName,TeamFounded,TeamLogo,LeagueId")] Team team)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(team);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            ViewData["LeagueId"] = new SelectList(_context.League, "LeagueId", "LeagueCountry", team.LeagueId);
+            return View(team);
+        }
+
+        // GET: Team/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var team = await _context.Team.FindAsync(id);
+            if (team == null)
+            {
+                return NotFound();
+            }
+            ViewData["LeagueId"] = new SelectList(_context.League, "LeagueId", "LeagueCountry", team.LeagueId);
+            return View(team);
+        }
+
+        // POST: Team/Edit/5
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("TeamId,TeamName,TeamFounded,TeamLogo,LeagueId")] Team team)
         {
             if (id != team.TeamId)
             {
-                return BadRequest();
+                return NotFound();
             }
 
-            _context.Entry(team).State = EntityState.Modified;
-
-            try
+            if (ModelState.IsValid)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!TeamExists(id))
+                try
                 {
-                    return NotFound();
+                    _context.Update(team);
+                    await _context.SaveChangesAsync();
                 }
-                else
+                catch (DbUpdateConcurrencyException)
                 {
-                    throw;
+                    if (!TeamExists(team.TeamId))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
+                return RedirectToAction(nameof(Index));
             }
-
-            return NoContent();
+            ViewData["LeagueId"] = new SelectList(_context.League, "LeagueId", "LeagueCountry", team.LeagueId);
+            return View(team);
         }
 
-        // POST: api/Team
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Team>> PostTeam(Team team)
+        // GET: Team/Delete/5
+        public async Task<IActionResult> Delete(int? id)
         {
-            _context.Team.Add(team);
-            await _context.SaveChangesAsync();
+            if (id == null)
+            {
+                return NotFound();
+            }
 
-            return CreatedAtAction("GetTeam", new { id = team.TeamId }, team);
-        }
-
-        // DELETE: api/Team/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTeam(int id)
-        {
-            var team = await _context.Team.FindAsync(id);
+            var team = await _context.Team
+                .Include(t => t.League)
+                .FirstOrDefaultAsync(m => m.TeamId == id);
             if (team == null)
             {
                 return NotFound();
             }
 
+            return View(team);
+        }
+
+        // POST: Team/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var team = await _context.Team.FindAsync(id);
             _context.Team.Remove(team);
             await _context.SaveChangesAsync();
-
-            return NoContent();
+            return RedirectToAction(nameof(Index));
         }
 
         private bool TeamExists(int id)
